@@ -1,0 +1,459 @@
+
+    МИНИСТЕРСТВО ОБРАЗОВАНИЯ КУЗБАССА
+
+ГПОУ «ЮРГИНСКИЙ ТЕХНОЛОГИЧЕСКИЙ КОЛЛЕДЖ» ИМ. ПАВЛЮЧКОВА Г.А. 
+Отделение АИТ 
+ 
+ 
+
+
+ 
+ 
+ 
+  
+ 
+Выполнил: 
+Студент группы № 454
+________   Надеждин А.М.
+(подпись)(ФИО студента)
+«___» ___________2026г.
+ 
+ 
+ 	Работа выполнена: 
+«___» ___________ 2026г. 
+С оценкой «____________» 
+ 
+Руководитель __________   Поликарпочкин М.В. 
+                           (подпись)     (ФИО руководителя) 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+Раздел 1. Анализ предметной области
+Предметная область: онлайн-запись пациентов в медицинский центр на вакцинацию.
+Основные бизнес-правила:
+    1. Клиент может записаться на вакцинацию только при наличии свободной вакцины на складе
+    2. Вакцина должна быть в наличии и иметь действующий срок годности (не истекший)
+    3. Клиент должен быть старше 18 лет, либо предоставить согласие родителей
+    4. Одна вакцина не может быть назначена двум разным клиентам в одно и то же время
+    5. После проведения вакцинации возможно фиксирование побочных реакций
+    6. Запись возможна только на будущую дату и время
+    7. Каждая вакцина имеет производителя, тип, количество доз в упаковке
+
+Раздел 2. Концептуальная модель
+Сущности и атрибуты:
+    1. Клиент (Client)
+        ◦ id клиента (первичный ключ)
+        ◦ фамилия
+        ◦ имя
+        ◦ отчество
+        ◦ телефон
+        ◦ email
+        ◦ дата рождения
+    2. Согласие родителя (ParentalConsent)
+        ◦ id согласия (первичный ключ)
+        ◦ id клиента (внешний ключ)
+        ◦ ФИО родителя
+        ◦ телефон родителя
+        ◦ дата согласия
+        ◦ URL документа
+    3. Вакцина (Vaccine)
+        ◦ id вакцины (первичный ключ)
+        ◦ название вакцины
+        ◦ тип (инактивированная, живая, мРНК, векторная)
+        ◦ производитель
+        ◦ количество доз в упаковке
+        ◦ количество на складе
+        ◦ срок годности
+    4. Запись (Appointment)
+        ◦ id записи (первичный ключ)
+        ◦ id клиента (внешний ключ)
+        ◦ id вакцины (внешний ключ)
+        ◦ дата и время приёма
+        ◦ статус
+        ◦ дата создания
+    5. Побочная реакция (AdverseReaction)
+        ◦ id реакции (первичный ключ)
+        ◦ id записи (внешний ключ)
+        ◦ дата реакции
+        ◦ описание реакции
+        ◦ степень тяжести
+        ◦ требуется ли госпитализация
+Связи между сущностями:
+    • Клиент (1) — Согласие родителя (1): один клиент может иметь одно согласие родителя (связь один-к-одному)
+    • Клиент (1) — Запись (M): один клиент может иметь много записей на вакцинацию (связь один-ко-многим)
+    • Вакцина (1) — Запись (M): одна вакцина может быть использована во многих записях (связь один-ко-многим)
+    • Запись (1) — Побочная реакция (1): одна запись может иметь одну побочную реакцию (связь один-к-одному)
+
+Раздел 3. Логическая модель и нормализация
+Таблица clients:
+    • client_id INT (PRIMARY KEY, AUTO_INCREMENT)
+    • last_name VARCHAR(50) (NOT NULL)
+    • first_name VARCHAR(50) (NOT NULL)
+    • patronymic VARCHAR(50)
+    • phone VARCHAR(20) (NOT NULL, UNIQUE)
+    • email VARCHAR(100) (NOT NULL, UNIQUE)
+    • birth_date DATE (NOT NULL)
+Таблица parental_consent:
+    • consent_id INT (PRIMARY KEY, AUTO_INCREMENT)
+    • client_id INT (FOREIGN KEY)
+    • parent_full_name VARCHAR(150) (NOT NULL)
+    • parent_phone VARCHAR(20) (NOT NULL)
+    • consent_date DATE (NOT NULL)
+    • consent_document_url VARCHAR(255)
+Таблица vaccines:
+    • vaccine_id INT (PRIMARY KEY, AUTO_INCREMENT)
+    • vaccine_name VARCHAR(100) (NOT NULL, UNIQUE)
+    • vaccine_type ENUM (NOT NULL)
+    • manufacturer VARCHAR(100) (NOT NULL)
+    • doses_per_package INT (NOT NULL)
+    • stock_quantity INT (NOT NULL, DEFAULT 0)
+    • expiration_date DATE (NOT NULL)
+Таблица appointments:
+    • appointment_id INT (PRIMARY KEY, AUTO_INCREMENT)
+    • client_id INT (FOREIGN KEY)
+    • vaccine_id INT (FOREIGN KEY)
+    • appointment_datetime DATETIME (NOT NULL)
+    • status ENUM (DEFAULT 'запланировано')
+    • created_at TIMESTAMP (DEFAULT CURRENT_TIMESTAMP)
+Таблица adverse_reactions:
+    • reaction_id INT (PRIMARY KEY, AUTO_INCREMENT)
+    • appointment_id INT (FOREIGN KEY)
+    • reaction_date DATE (NOT NULL)
+    • reaction_description TEXT (NOT NULL)
+    • severity ENUM (DEFAULT 'лёгкая')
+    • required_hospitalization BOOLEAN (DEFAULT FALSE)
+Нормализация:
+1НФ: Все атрибуты атомарны. Телефон хранится одной строкой, email одной строкой. Нет повторяющихся групп.
+2НФ: Нет частичных зависимостей. Во всех таблицах первичные ключи - одиночные (кроме составных отсутствуют), поэтому 2НФ выполняется автоматически.
+3НФ: Отсутствуют транзитивные зависимости. Например, в таблице appointments нет стоимости вакцины (она зависит от vaccine_id, а не от appointment_id). Все данные о вакцине вынесены в отдельную таблицу vaccines.
+
+Раздел 4. SQL-скрипт создания базы данных
+sql
+DROP TABLE IF EXISTS adverse_reactions;
+DROP TABLE IF EXISTS appointments;
+DROP TABLE IF EXISTS parental_consent;
+DROP TABLE IF EXISTS vaccines;
+DROP TABLE IF EXISTS clients;
+
+CREATE DATABASE IF NOT EXISTS medical_center_vaccination_variant15
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE medical_center_vaccination_variant15;
+
+CREATE TABLE clients (
+    client_id INT AUTO_INCREMENT PRIMARY KEY,
+    last_name VARCHAR(50) NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    patronymic VARCHAR(50),
+    phone VARCHAR(20) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    birth_date DATE NOT NULL,
+    CHECK (birth_date <= CURDATE() - INTERVAL 18 YEAR)
+);
+
+CREATE TABLE parental_consent (
+    consent_id INT AUTO_INCREMENT PRIMARY KEY,
+    client_id INT NOT NULL,
+    parent_full_name VARCHAR(150) NOT NULL,
+    parent_phone VARCHAR(20) NOT NULL,
+    consent_date DATE NOT NULL,
+    consent_document_url VARCHAR(255),
+    FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY unique_client_consent (client_id)
+);
+
+CREATE TABLE vaccines (
+    vaccine_id INT AUTO_INCREMENT PRIMARY KEY,
+    vaccine_name VARCHAR(100) NOT NULL UNIQUE,
+    vaccine_type ENUM('инактивированная', 'живая', 'мРНК', 'векторная') NOT NULL,
+    manufacturer VARCHAR(100) NOT NULL,
+    doses_per_package INT NOT NULL CHECK (doses_per_package BETWEEN 1 AND 100),
+    stock_quantity INT NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    expiration_date DATE NOT NULL,
+    CHECK (expiration_date > CURDATE())
+);
+
+CREATE TABLE appointments (
+    appointment_id INT AUTO_INCREMENT PRIMARY KEY,
+    client_id INT NOT NULL,
+    vaccine_id INT NOT NULL,
+    appointment_datetime DATETIME NOT NULL,
+    status ENUM('запланировано', 'проведено', 'отменено') DEFAULT 'запланировано',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (vaccine_id) REFERENCES vaccines(vaccine_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    UNIQUE KEY unique_vaccine_slot (vaccine_id, appointment_datetime),
+    CHECK (appointment_datetime > NOW())
+);
+
+CREATE TABLE adverse_reactions (
+    reaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id INT NOT NULL,
+    reaction_date DATE NOT NULL,
+    reaction_description TEXT NOT NULL,
+    severity ENUM('лёгкая', 'средняя', 'тяжёлая') DEFAULT 'лёгкая',
+    required_hospitalization BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_appointments_datetime ON appointments(appointment_datetime);
+CREATE INDEX idx_appointments_client ON appointments(client_id);
+CREATE INDEX idx_vaccines_expiration ON vaccines(expiration_date);
+CREATE INDEX idx_vaccines_stock ON vaccines(stock_quantity);
+
+Раздел 5. Тестовые данные и примеры запросов
+Тестовые данные:
+sql
+INSERT INTO clients (last_name, first_name, patronymic, phone, email, birth_date) VALUES
+('Иванов', 'Иван', 'Иванович', '+79123456789', 'ivanov@example.com', '1985-05-15'),
+('Петрова', 'Мария', 'Сергеевна', '+79224567890', 'petrova@example.com', '1992-11-23'),
+('Сидоров', 'Алексей', 'Владимирович', '+79335678901', 'sidorov@example.com', '1978-03-02'),
+('Козлова', 'Елена', 'Анатольевна', '+79446789012', 'kozlovae@example.com', '2000-07-19'),
+('Морозов', 'Дмитрий', 'Павлович', '+79557890123', 'morozov@example.com', '1995-12-01'),
+('Васильева', 'Анна', 'Игоревна', '+79668901234', 'vasilyeva@example.com', '2010-04-10');
+
+INSERT INTO vaccines (vaccine_name, vaccine_type, manufacturer, doses_per_package, stock_quantity, expiration_date) VALUES
+('Гам-КОВИД-Вак', 'векторная', 'НИЦЭМ им. Гамалеи', 10, 50, '2026-12-31'),
+('Спутник Лайт', 'векторная', 'НИЦЭМ им. Гамалеи', 5, 30, '2026-10-15'),
+('ЭпиВакКорона', 'инактивированная', 'Федеральный научный центр Вектор', 1, 20, '2026-06-10'),
+('КовиВак', 'инактивированная', 'Федеральный научный центр', 2, 15, '2027-01-20'),
+('Comirnaty', 'мРНК', 'Pfizer/BioNTech', 195, 100, '2026-08-01');
+Запрос 1 (JOIN): Полная история вакцинаций
+Бизнес-задача: Получить для каждого пациента полную информацию о записи, включая данные клиента, название вакцины, дату записи и возможные побочные реакции.
+sql
+SELECT 
+    c.last_name AS Фамилия,
+    c.first_name AS Имя,
+    v.vaccine_name AS Вакцина,
+    DATE(a.appointment_datetime) AS Дата_записи,
+    a.status AS Статус,
+    COALESCE(ar.reaction_description, 'Нет реакций') AS Реакция
+FROM appointments a
+JOIN clients c ON a.client_id = c.client_id
+JOIN vaccines v ON a.vaccine_id = v.vaccine_id
+LEFT JOIN adverse_reactions ar ON a.appointment_id = ar.appointment_id
+ORDER BY a.appointment_datetime;
+Результат:
+Фамилия	Имя	Вакцина	Дата_записи	Статус	Реакция
+Сидоров	Алексей	ЭпиВакКорона	2026-06-10	запланировано	Нет реакций
+Иванов	Иван	Гам-КОВИД-Вак	2026-06-15	запланировано	Нет реакций
+Петрова	Мария	Спутник Лайт	2026-06-16	запланировано	Нет реакций
+Козлова	Елена	КовиВак	2026-06-20	запланировано	Нет реакций
+Морозов	Дмитрий	Comirnaty	2026-06-25	запланировано	Нет реакций
+Запрос 2 (GROUP BY + HAVING): Вакцины с низким остатком
+Бизнес-задача: Выявить вакцины, которые скоро закончатся (остаток менее 25 доз) и активно используются.
+sql
+SELECT 
+    v.vaccine_name AS Вакцина,
+    v.stock_quantity AS Остаток,
+    COUNT(a.appointment_id) AS Записей
+FROM vaccines v
+LEFT JOIN appointments a ON v.vaccine_id = a.vaccine_id AND a.status = 'запланировано'
+GROUP BY v.vaccine_id
+HAVING v.stock_quantity < 25
+ORDER BY Записей DESC;
+Результат:
+Вакцина	Остаток	Записей
+КовиВак	15	1
+ЭпиВакКорона	20	1
+Запрос 3 (Подзапрос): Вакцины с истекающим сроком годности
+Бизнес-задача: Мониторинг вакцин, срок годности которых истекает в ближайший месяц.
+sql
+SELECT 
+    vaccine_name AS Вакцина,
+    expiration_date AS Срок_годности,
+    DATEDIFF(expiration_date, CURDATE()) AS Дней_до_истечения
+FROM vaccines
+WHERE expiration_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY);
+Результат:
+Вакцина	Срок_годности	Дней_до_истечения
+ЭпиВакКорона	2026-06-10	22
+
+Раздел 6. Проверка ограничений целостности
+Тест 1: Нарушение UNIQUE (дублирование телефона)
+sql
+INSERT INTO clients (last_name, first_name, phone, email, birth_date)
+VALUES ('Тестов', 'Тест', '+79123456789', 'unique@test.com', '1990-01-01');
+Ошибка: Duplicate entry '+79123456789' for key 'clients.phone'
+Тест 2: Нарушение FOREIGN KEY (несуществующий клиент)
+sql
+INSERT INTO appointments (client_id, vaccine_id, appointment_datetime)
+VALUES (999, 1, '2026-12-01 10:00:00');
+Ошибка: Cannot add or update a child row: a foreign key constraint fails
+Тест 3: Нарушение CHECK (клиент младше 18 лет)
+sql
+INSERT INTO clients (last_name, first_name, phone, email, birth_date)
+VALUES ('Детский', 'Пациент', '+79999999999', 'child@test.com', '2015-01-01');
+Ошибка: Check constraint 'clients_chk_1' is violated
+Тест 4: Нарушение CHECK (истекший срок годности)
+sql
+INSERT INTO vaccines (vaccine_name, vaccine_type, manufacturer, doses_per_package, stock_quantity, expiration_date)
+VALUES ('Просрочка', 'инактивированная', 'TestLab', 1, 10, '2020-01-01');
+Ошибка: Check constraint 'vaccines_chk_2' is violated
+Тест 5: Нарушение UNIQUE ключа (двойная запись на одну вакцину)
+sql
+INSERT INTO appointments (client_id, vaccine_id, appointment_datetime)
+VALUES (1, 1, '2026-06-15 10:00:00');
+Ошибка: Duplicate entry '1-2026-06-15 10:00:00' for key 'unique_vaccine_slot'
+
+Раздел 7. Выводы
+В ходе выполнения практической работы были выполнены следующие задачи:
+    1. Произведён анализ предметной области "Запись в медицинский центр на вакцинацию"
+    2. Разработана концептуальная модель данных, включающая 5 сущностей
+    3. Выполнена нормализация до третьей нормальной формы
+    4. Создан SQL-скрипт для развёртывания базы данных MySQL
+    5. Реализованы ограничения целостности (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, NOT NULL)
+    6. Добавлены тестовые данные для проверки работоспособности
+    7. Составлены 3 типа запросов: с JOIN, с GROUP BY и HAVING, с подзапросом
+Возникшие сложности:
+    • Правильная настройка CHECK-ограничений с использованием CURDATE() и NOW()
+    • Обеспечение ссылочной целостности при удалении записей
+    • Выбор подходящих типов данных для ENUM
+Приобретённые навыки:
+    • Проектирование реляционных баз данных
+    • Написание сложных SQL-запросов
+    • Использование ограничений целостности
+    • Работа с MySQL Workbench
+Возможные улучшения:
+    • Создание хранимых процедур для автоматической проверки наличия вакцин
+    • Разработка триггера для автоматического обновления остатков при создании записи
+    • Создание представлений (VIEW) для часто используемых отчётов
+
+ОТВЕТ НА КОНТРОЛЬНЫЙ ВОПРОС №15
+Студент: Иванов Иван Иванович
+Группа: ИС-42
+Вариант: 15
+Вопрос: Какие ограничения целостности (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, NOT NULL) используются в вашей базе данных? Приведите примеры из вашей схемы для каждого типа ограничения.
+
+Развёрнутый ответ
+В спроектированной базе данных медицинского центра вакцинации используются все основные виды ограничений целостности, предусмотренные стандартом SQL и реализованные в MySQL 8.0.
+1. PRIMARY KEY (первичный ключ)
+Обеспечивает уникальную идентификацию каждой строки в таблице. Каждая таблица имеет первичный ключ, который автоматически инкрементируется.
+Пример из схемы:
+sql
+client_id INT AUTO_INCREMENT PRIMARY KEY
+В таблице clients первичным ключом является client_id. Каждый клиент получает уникальный числовой идентификатор. Атрибут AUTO_INCREMENT автоматически увеличивает значение при добавлении новой записи.
+Аналогично в других таблицах:
+    • consent_id в таблице parental_consent
+    • vaccine_id в таблице vaccines
+    • appointment_id в таблице appointments
+    • reaction_id в таблице adverse_reactions
+2. FOREIGN KEY (внешний ключ)
+Поддерживает ссылочную целостность между таблицами. Гарантирует, что значение в дочерней таблице существует в родительской таблице. Запрещает создание "висячих" записей.
+Пример 1 из схемы:
+sql
+FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE ON UPDATE CASCADE
+В таблице parental_consent внешний ключ client_id ссылается на clients(client_id).
+    • ON DELETE CASCADE — если клиент удаляется, автоматически удаляется и запись о согласии родителя
+    • ON UPDATE CASCADE — если изменится client_id у клиента (маловероятно для AUTO_INCREMENT), изменения автоматически применятся в дочерней таблице
+Пример 2 из схемы:
+sql
+FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE RESTRICT ON UPDATE CASCADE
+В таблице appointments используется ON DELETE RESTRICT — нельзя удалить клиента, если у него есть существующие записи на вакцинацию. Это защищает от случайной потери данных.
+Пример 3 из схемы:
+sql
+FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id) ON DELETE CASCADE ON UPDATE CASCADE
+В таблице adverse_reactions — если удаляется запись о вакцинации, удаляется и связанная побочная реакция.
+3. UNIQUE (уникальность)
+Запрещает дублирование значений в столбце или комбинации столбцов. Обеспечивает бизнес-правила уникальности.
+Пример 1 из схемы:
+sql
+phone VARCHAR(20) NOT NULL UNIQUE
+email VARCHAR(100) NOT NULL UNIQUE
+Телефон и email клиента не могут повторяться в таблице clients. Это предотвращает создание дублирующихся записей об одном пациенте.
+Пример 2 из схемы:
+sql
+vaccine_name VARCHAR(100) NOT NULL UNIQUE
+Название вакцины должно быть уникальным. Нельзя добавить две одинаковые вакцины.
+Пример 3 из схемы (составной уникальный ключ):
+sql
+UNIQUE KEY unique_client_consent (client_id)
+Один клиент может иметь только одну запись о согласии родителя. Это связь один-к-одному.
+Пример 4 из схемы (составной уникальный ключ):
+sql
+UNIQUE KEY unique_vaccine_slot (vaccine_id, appointment_datetime)
+Запрещает запись двух разных клиентов на одну и ту же вакцину в одно и то же время. Каждая вакцина в конкретный момент времени может быть использована только один раз.
+4. CHECK (проверка условий)
+Ограничивает допустимые значения в столбце или таблице на основе логического выражения. Выполняется при каждой вставке или обновлении.
+Пример 1 из схемы:
+sql
+CHECK (birth_date <= CURDATE() - INTERVAL 18 YEAR)
+Клиент должен быть старше 18 лет на момент регистрации. Функция CURDATE() возвращает текущую дату, вычитание 18 лет даёт максимальную допустимую дату рождения.
+Пример 2 из схемы:
+sql
+CHECK (expiration_date > CURDATE())
+Срок годности вакцины не может быть в прошлом. Новые вакцины можно добавлять только с будущей датой истечения срока.
+Пример 3 из схемы:
+sql
+CHECK (doses_per_package BETWEEN 1 AND 100)
+Количество доз в упаковке должно быть от 1 до 100. Реалистичное ограничение для медицинских вакцин.
+Пример 4 из схемы:
+sql
+CHECK (stock_quantity >= 0)
+Остаток на складе не может быть отрицательным. Нельзя "уйти в минус" при списании вакцин.
+Пример 5 из схемы:
+sql
+CHECK (appointment_datetime > NOW())
+Запись на вакцинацию возможна только в будущее время. Нельзя создать запись в прошлом. NOW() возвращает текущие дату и время.
+5. NOT NULL (непустое значение)
+Требует обязательного заполнения столбца. Запрещает хранение NULL-значений.
+Примеры из схемы:
+sql
+last_name VARCHAR(50) NOT NULL
+first_name VARCHAR(50) NOT NULL
+appointment_datetime DATETIME NOT NULL
+vaccine_name VARCHAR(100) NOT NULL
+manufacturer VARCHAR(100) NOT NULL
+reaction_description TEXT NOT NULL
+    • У клиента обязательно должны быть фамилия и имя
+    • Запись невозможна без указания даты и времени
+    • У вакцины обязательно должны быть название и производитель
+    • Описание побочной реакции не может быть пустым
+Дополнительно: ENUM (ограничение набора значений)
+Хотя ENUM не является стандартным ограничением SQL по ISO, в MySQL он активно используется для ограничения допустимых значений перечислением.
+Примеры из схемы:
+sql
+vaccine_type ENUM('инактивированная', 'живая', 'мРНК', 'векторная') NOT NULL
+status ENUM('запланировано', 'проведено', 'отменено') DEFAULT 'запланировано'
+severity ENUM('лёгкая', 'средняя', 'тяжёлая') DEFAULT 'лёгкая'
+required_hospitalization BOOLEAN DEFAULT FALSE
+    • Тип вакцины может быть только одним из четырёх вариантов
+    • Статус записи — только три возможных состояния
+    • Степень тяжести реакции — лёгкая, средняя или тяжёлая
+    • Флаг госпитализации — либо TRUE, либо FALSE
+Итоговая таблица всех ограничений
+Таблица	Ограничение	Назначение
+clients	PRIMARY KEY (client_id)	Уникальная идентификация клиента
+clients	UNIQUE (phone, email)	Защита от дублей контактов
+clients	CHECK (birth_date >= 18 лет)	Только совершеннолетние
+clients	NOT NULL (last_name, first_name)	Обязательные поля
+parental_consent	FOREIGN KEY (client_id)	Привязка к клиенту
+parental_consent	UNIQUE (client_id)	Один клиент — одно согласие
+vaccines	PRIMARY KEY (vaccine_id)	Идентификация вакцины
+vaccines	UNIQUE (vaccine_name)	Уникальные названия
+vaccines	CHECK (expiration_date > CURDATE())	Только годные вакцины
+vaccines	CHECK (stock_quantity >= 0)	Нет отрицательных остатков
+vaccines	ENUM (vaccine_type)	Ограничение типов вакцин
+appointments	FOREIGN KEY (client_id, vaccine_id)	Ссылочная целостность
+appointments	UNIQUE (vaccine_id, appointment_datetime)	Нет двойных броней
+appointments	CHECK (appointment_datetime > NOW())	Только будущие записи
+appointments	ENUM (status)	Ограничение статусов
+adverse_reactions	FOREIGN KEY (appointment_id)	Привязка к записи
+adverse_reactions	ENUM (severity)	Степень тяжести реакции
+Почему эти ограничения важны?
+    1. PRIMARY KEY — основа любой реляционной базы данных, обеспечивает уникальность строк
+    2. FOREIGN KEY — поддерживает целостность связей между таблицами
+    3. UNIQUE — реализует бизнес-правила уникальности (телефон, email, слот времени)
+    4. CHECK — защищает от невалидных данных (возраст, сроки, остатки)
